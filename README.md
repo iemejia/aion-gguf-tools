@@ -2,6 +2,10 @@
 
 Tools for converting a local Aion-1.0-Instruct Edge ONNX bundle into GGUF and running it with llama.cpp.
 
+![Aion Q4_K_M GGUF running in llama.cpp at over 200 tokens per second](media/aion-q4-200tps.gif)
+
+Real Aion Q4_K_M GGUF generation through llama.cpp/Metal on an M4 Max, with decode throughput above 200 tokens/s.
+
 This repo contains only converter, validation, and runner scripts. It does not include model weights, tokenizer files, generated GGUF files, ONNX files, safetensors, or any Aion model data.
 
 ## Get The Aion Bundle
