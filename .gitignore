@@ -1,0 +1,18 @@
+.DS_Store
+.venv/
+__pycache__/
+*.py[cod]
+
+# Model/data artifacts: do not publish these.
+*.gguf
+*.onnx
+*.onnx.data
+*.safetensors
+*.bin
+models/
+bundles/
+outputs/
+
+# Logs and generated probes.
+*.log
+aion-logits-probe
