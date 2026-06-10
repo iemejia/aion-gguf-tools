@@ -46,18 +46,16 @@ cmake --build ../llama.cpp/build --config Release -j
 ## Convert To GGUF
 
 ```sh
-python scripts/convert_aion_onnx_to_gguf.py \
-  /path/to/aion-onnx-bundle \
-  --outfile /tmp/aion-f16.gguf
+python scripts/convert_aion_onnx_to_gguf.py /path/to/aion-onnx-bundle --outfile /tmp/aion-q40.gguf
 ```
 
-The converter writes a Qwen3 GGUF with F32 norm tensors and a compact llama.cpp chat template that tokenizes equivalently to Aion's observed role-token prompt format.
+This directly repacks the ONNX 4-bit quantized weights into GGUF Q4_0 block format — no dequantization, no precision loss. The output is comparable in size to the original ONNX bundle (~1.3 GB).
 
-## Quantize With llama.cpp
+Options:
 
 ```sh
-../llama.cpp/build/bin/llama-quantize /tmp/aion-f16.gguf /tmp/aion-q8_0.gguf Q8_0
-../llama.cpp/build/bin/llama-quantize /tmp/aion-f16.gguf /tmp/aion-q4_k_m.gguf Q4_K_M
+# Smoke test with only the first 2 layers
+python scripts/convert_aion_onnx_to_gguf.py /path/to/aion-onnx-bundle --outfile /tmp/aion-q40.gguf --max-layers 2 --verbose
 ```
 
 ## Validate
@@ -65,11 +63,7 @@ The converter writes a Qwen3 GGUF with F32 norm tensors and a compact llama.cpp 
 ```sh
 python scripts/aion_validate_gguf.py \
   --model-dir /path/to/aion-onnx-bundle \
-  --gguf /tmp/aion-f16.gguf
-
-python scripts/aion_validate_gguf.py \
-  --model-dir /path/to/aion-onnx-bundle \
-  --gguf /tmp/aion-q4_k_m.gguf \
+  --gguf /tmp/aion-q40.gguf \
   --allow-quantized
 ```
 
@@ -83,7 +77,7 @@ scripts/aion_demo.sh "Write one sentence about Apple Silicon."
 
 Defaults:
 
-- `AION_GGUF=/tmp/aion-q4_k_m.gguf`
+- `AION_GGUF=/tmp/aion-q40.gguf`
 - `LLAMA_CPP_DIR=../llama.cpp`
 - `AION_CTX=2048`
 - `AION_THREADS=8`
@@ -94,7 +88,7 @@ Defaults:
 Use a different model or full context:
 
 ```sh
-AION_GGUF=/tmp/aion-q8_0.gguf scripts/aion_demo.sh "Hello"
+AION_GGUF=/tmp/aion-q40.gguf scripts/aion_demo.sh "Hello"
 AION_CTX=8192 scripts/aion_demo.sh "Use the full context limit."
 ```
 
