@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="${0:A:h}"
 PROJECT_DIR="${SCRIPT_DIR:h}"
 LLAMA_CPP_DIR="${LLAMA_CPP_DIR:-${PROJECT_DIR:h}/llama.cpp}"
-MODEL="${AION_GGUF:-/tmp/aion-q4_k_m.gguf}"
+MODEL="${AION_GGUF:-/tmp/aion-q40.gguf}"
 PROMPT="${1:-Hello}"
 MAX_TOKENS="${AION_MAX_TOKENS:-128}"
 TEMP="${AION_TEMP:-0.2}"
@@ -14,7 +14,7 @@ THREADS="${AION_THREADS:-8}"
 
 if [[ ! -f "$MODEL" ]]; then
   echo "Missing model: $MODEL" >&2
-  echo "Set AION_GGUF=/path/to/model.gguf or generate /tmp/aion-q4_k_m.gguf first." >&2
+  echo "Set AION_GGUF=/path/to/model.gguf or generate /tmp/aion-q40.gguf first." >&2
   exit 1
 fi
 

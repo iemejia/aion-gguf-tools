@@ -202,6 +202,11 @@ def repack_onnx_nibbles_to_q4_0(onnx_packed: np.ndarray[Any, Any]) -> np.ndarray
     return (values[..., :16] | (values[..., 16:] << 4)).astype(np.uint8)
 
 
+def require_block_aligned_width(name: str, k: int, block_size: int, quant_type: str) -> None:
+    if k % block_size != 0:
+        raise ValueError(f"{name}: {quant_type} requires K divisible by {block_size}, got K={k}")
+
+
 def quantize_f32_to_q4_0(data: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
     """Quantize an FP32 array to raw Q4_0 bytes (fallback for non-32 block sizes).
 
@@ -211,12 +216,7 @@ def quantize_f32_to_q4_0(data: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
         data = data.reshape(1, -1)
     n, k = data.shape
     data = data.astype(np.float32)
-
-    # Pad k to a multiple of 32
-    pad = (GGML_QK4_0 - k % GGML_QK4_0) % GGML_QK4_0
-    if pad:
-        data = np.pad(data, ((0, 0), (0, pad)))
-        k = k + pad
+    require_block_aligned_width("tensor", k, GGML_QK4_0, "Q4_0")
 
     num_blocks = k // GGML_QK4_0
     blocks_data = data.reshape(n * num_blocks, GGML_QK4_0)
@@ -258,6 +258,7 @@ def matmul_nbits_to_q4_0(bundle: AionOnnxBundle, prefix: str) -> tuple[np.ndarra
     block_size = int(attrs["block_size"])
     k = int(attrs["K"])
     n = int(attrs["N"])
+    require_block_aligned_width(prefix, k, GGML_QK4_0, "Q4_0")
 
     if bits != 4 or block_size != GGML_QK4_0:
         # Block size mismatch: dequantize then re-quantize to Q4_0
@@ -301,6 +302,7 @@ def matmul_nbits_to_q8_0(bundle: AionOnnxBundle, prefix: str) -> tuple[np.ndarra
     block_size = int(attrs["block_size"])
     k = int(attrs["K"])
     n = int(attrs["N"])
+    require_block_aligned_width(prefix, k, GGML_QK8_0, "Q8_0")
 
     if bits != 8 or block_size != GGML_QK8_0:
         raise ValueError(f"{prefix}: expected 8-bit block_size=32 for Q8_0, got bits={bits} block_size={block_size}")
@@ -340,12 +342,13 @@ def matmul_nbits_to_gguf(bundle: AionOnnxBundle, prefix: str) -> tuple[np.ndarra
 
 def add_tensor_q4_0(writer: gguf.GGUFWriter, name: str, raw_data: np.ndarray[Any, Any], shape: list[int], dry_run: bool) -> None:
     """Write a pre-quantized Q4_0 tensor to the GGUF file."""
+    n, k = shape
+    require_block_aligned_width(name, k, GGML_QK4_0, "Q4_0")
     LOGGER.info("%-38s %s Q4_0 (%d bytes)", name, shape, len(raw_data))
     if not dry_run:
         # gguf-py expects the data shaped as (rows, bytes_per_row) where
         # bytes_per_row must be a multiple of the Q4_0 block size (18 bytes).
-        n, k = shape
-        num_blocks_per_row = (k + GGML_QK4_0 - 1) // GGML_QK4_0
+        num_blocks_per_row = k // GGML_QK4_0
         bytes_per_row = num_blocks_per_row * GGML_Q4_0_BLOCK_BYTES
         data_2d = raw_data.reshape(n, bytes_per_row)
         writer.add_tensor(name, data_2d, raw_dtype=gguf.GGMLQuantizationType.Q4_0)
@@ -353,10 +356,11 @@ def add_tensor_q4_0(writer: gguf.GGUFWriter, name: str, raw_data: np.ndarray[Any
 
 def add_tensor_q8_0(writer: gguf.GGUFWriter, name: str, raw_data: np.ndarray[Any, Any], shape: list[int], dry_run: bool) -> None:
     """Write a pre-quantized Q8_0 tensor to the GGUF file."""
+    n, k = shape
+    require_block_aligned_width(name, k, GGML_QK8_0, "Q8_0")
     LOGGER.info("%-38s %s Q8_0 (%d bytes)", name, shape, len(raw_data))
     if not dry_run:
-        n, k = shape
-        num_blocks_per_row = (k + GGML_QK8_0 - 1) // GGML_QK8_0
+        num_blocks_per_row = k // GGML_QK8_0
         bytes_per_row = num_blocks_per_row * GGML_Q8_0_BLOCK_BYTES
         data_2d = raw_data.reshape(n, bytes_per_row)
         writer.add_tensor(name, data_2d, raw_dtype=gguf.GGMLQuantizationType.Q8_0)

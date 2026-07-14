@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="${0:A:h}"
 PROJECT_DIR="${SCRIPT_DIR:h}"
 LLAMA_CPP_DIR="${LLAMA_CPP_DIR:-${PROJECT_DIR:h}/llama.cpp}"
-MODEL="${AION_GGUF:-/tmp/aion-q4_k_m.gguf}"
+MODEL="${AION_GGUF:-/tmp/aion-q40.gguf}"
 
 if [[ ! -f "$MODEL" ]]; then
   echo "missing model: $MODEL" >&2
@@ -22,7 +22,7 @@ prompts=(
   "Give two short bullets about low-latency local inference."
 )
 
-printf '\033[1;36mAion-1.0-Instruct Q4_K_M on llama.cpp / Metal\033[0m\n'
+printf '\033[1;36mAion-1.0-Instruct GGUF on llama.cpp / Metal\033[0m\n'
 printf 'model: %s\n' "$MODEL"
 printf 'runtime: flash-attn=on, ubatch=512, ctx=2048, threads=8\n\n'
 
